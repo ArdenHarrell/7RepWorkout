@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  7RepWorkout backend - member sign-up API for 7repworkout.com.
+  Creates a DynamoDB table (one row per email), one Lambda handler and an HTTP API.
+  The API is reached through CloudFront at https://7repworkout.com/api/*, so the
+  site and the API share one address and no CORS is needed.
+
+Parameters:
+  NotifyFromAddress:
+    Type: String
+    Default: fan@7RepWorkout.com
+    Description: SES-verified sender address for notification emails
+  NotifyToAddress:
+    Type: String
+    Default: fan@7RepWorkout.com
+    Description: Address that receives a notification for every new sign-up
+  TurnstileSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Cloudflare Turnstile SECRET key (CAPTCHA). Leave empty only for testing - the check is skipped.
+  Stage:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, prod]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    Timeout: 10
+    MemorySize: 256
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+
+  # ---------- DynamoDB: one row per email address ----------
+  MemberTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "7repworkout-members-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  # ---------- HTTP API (API Gateway v2) ----------
+  # No stage name = the "$default" stage, so paths are exactly /api/subscribe and /api/lookup.
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      # Spam / cost protection: 2 requests a second, short bursts up to 5
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 2
+        ThrottlingBurstLimit: 5
+
+  # ---------- Lambda ----------
+  SignupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "7repworkout-signup-${Stage}"
+      CodeUri: lambdas/signup/
+      Handler: index.handler
+      Environment:
+        Variables:
+          TABLE_NAME:       !Ref MemberTable
+          NOTIFY_FROM:      !Ref NotifyFromAddress
+          NOTIFY_TO:        !Ref NotifyToAddress
+          TURNSTILE_SECRET: !Ref TurnstileSecretKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+              Resource: !GetAtt MemberTable.Arn
+            - Effect: Allow
+              Action: ses:SendEmail
+              Resource: "*"
+      Events:
+        Subscribe:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /api/subscribe
+            Method: post
+        Lookup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /api/lookup
+            Method: post
+
+Outputs:
+  ApiDomain:
+    Description: Use this as the second CloudFront origin (for the /api/* behavior). No https://, no path.
+    Value: !Sub "${Api}.execute-api.${AWS::Region}.amazonaws.com"
+  MemberTableName:
+    Description: DynamoDB table holding sign-ups
+    Value: !Ref MemberTable

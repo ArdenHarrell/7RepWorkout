@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workout Generator - 7RepWorkout</title>
+  <meta name="description" content="Build and print your 8-week, 13-muscle 7RepWorkout plan. Customize every exercise and track your weights.">
+  <link rel="canonical" href="https://7repworkout.com/generator.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/generator.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="index.html">7Rep<span>Workout</span></a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="generator.html" aria-current="page">Workout Generator</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Step 1: sign-up form. Hidden automatically once the visitor has signed up. -->
+  <section class="gate" id="gate">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Step 1 of 2</p>
+        <h1>Unlock your 8-week workout</h1>
+        <p class="gate-lede">Tell us where to send your free bonus tips, and your plan opens right away.</p>
+        <ul class="gate-points">
+          <li>Start at 70% of your max weight</li>
+          <li>Add 7 reps every week</li>
+          <li>Finish each session in under an hour</li>
+          <li>Print it and track one weight per exercise</li>
+        </ul>
+        <noscript><p class="gate-lede">JavaScript is required to use the workout generator.</p></noscript>
+      </div>
+
+      <form class="signup-form" id="signup-form" data-source="generator" novalidate>
+        <h2 data-form-title>Get started</h2>
+        <p class="form-switch">
+          <span data-form-switch-lead>Already signed up?</span>
+          <button type="button" class="link-btn" data-form-switch>Enter your email only</button>
+        </p>
+
+        <div class="field" data-signup-only>
+          <label for="su-name">Full name</label>
+          <input type="text" id="su-name" name="name" autocomplete="name" maxlength="120" required>
+          <span class="field-error" data-error-for="name"></span>
+        </div>
+
+        <div class="field" data-signup-only>
+          <label for="su-phone">Phone number</label>
+          <input type="tel" id="su-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30" required>
+          <span class="field-error" data-error-for="phone"></span>
+        </div>
+
+        <div class="field">
+          <label for="su-email">Email address</label>
+          <input type="email" id="su-email" name="email" autocomplete="email" maxlength="254" required>
+          <span class="field-error" data-error-for="email"></span>
+        </div>
+
+        <!-- Honeypot: real visitors never see or fill this in -->
+        <div class="hp-field" aria-hidden="true">
+          <label for="su-website">Website</label>
+          <input type="text" id="su-website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="field" data-signup-only>
+          <label class="consent" for="su-consent">
+            <input type="checkbox" id="su-consent" name="consent" required>
+            <span>I agree that 7RepWorkout may contact me by email and phone about my workout. I can opt out at any time.</span>
+          </label>
+          <p class="consent-note">We never sell your information. Ever.</p>
+          <span class="field-error" data-error-for="consent"></span>
+        </div>
+
+        <!-- CAPTCHA: shown when TURNSTILE_SITE_KEY is set in js/config.js -->
+        <div class="field">
+          <div id="captcha" class="captcha" hidden></div>
+          <span class="field-error" data-error-for="captcha"></span>
+        </div>
+
+        <button class="btn" type="submit">Unlock my workout</button>
+        <p class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Step 2: the workout generator. Shown after sign-up. -->
+  <div id="generator-area" hidden>
+    <div class="cover">
+      <h1 id="cover-title"></h1>
+      <p class="workout-subtitle" id="workout-subtitle"></p>
+      <p class="mission" id="purpose"></p>
+      <p class="lede" id="cover-desc"></p>
+
+      <!-- Collapsed by default; click the title to open. -->
+      <details class="start-weight">
+        <summary>Find your starting weight</summary>
+        <ol>
+          <li>Pick a weight for the exercise and try 15 reps.</li>
+          <li>Can't finish 15? Drop 5 lb and try again. Keep going until you can.</li>
+          <li>The heaviest weight you can lift for 15 reps is your max.</li>
+        </ol>
+        <p>Start each exercise at 70% of its max. Write that weight on your sheet and keep it for all 8 weeks.</p>
+      </details>
+      <div class="cover-meta" id="cover-meta"></div>
+      <div class="cover-actions">
+        <button class="btn" type="button" id="print-btn">Print my workout</button>
+      </div>
+    </div>
+
+    <nav class="weeknav" id="weeknav" aria-label="Jump to week"></nav>
+
+    <p class="colophon">Print this on one sheet of paper (double-sided) and watch your progress each week.</p>
+
+    <section class="editor">
+      <details>
+        <summary>Edit workout <b id="editor-count"></b></summary>
+        <form class="editor-body" id="editor-form">
+          <div class="workout-picker">
+            <!-- Normal view: the workout's name (a dropdown once there are several) and its buttons -->
+            <div class="picker-row" id="picker-view">
+              <span class="workout-title" id="workout-title"></span>
+              <select id="workout-select" aria-label="Workout"></select>
+              <div class="picker-buttons">
+                <button type="button" id="workout-rename">Rename</button>
+                <button type="button" id="workout-delete">Delete</button>
+                <button type="button" id="workout-new">New</button>
+              </div>
+            </div>
+            <!-- Naming step, shown for New and Rename -->
+            <div class="picker-row" id="picker-naming" hidden>
+              <label>Name <input type="text" id="workout-name-input" maxlength="60" autocomplete="off"></label>
+              <button type="button" id="name-save">Save</button>
+              <button type="button" id="name-cancel">Cancel</button>
+            </div>
+          </div>
+          <p class="editor-hint">
+            Separate multiple exercises with commas. Each muscle's exercises apply to all 8 weeks.
+            Choose <b>Dumbbells Only</b> or <b>Dumbbells + Bar</b> from the list to start from a preset.
+            <b>New</b> copies the current workout under a new name. Workouts are saved in this browser;
+            exercises that differ from the preset are outlined.
+          </p>
+          <div class="editor-grid" id="editor-grid"></div>
+          <div class="editor-actions">
+            <button type="submit" id="editor-update">Update</button>
+            <button type="button" id="editor-reset">Reset to defaults</button>
+            <span class="editor-status" id="editor-status" role="status"></span>
+          </div>
+        </form>
+      </details>
+    </section>
+
+    <main class="generator" id="main">
+      <div class="sheet" id="sheet1"></div>
+      <div class="sheet" id="sheet2"></div>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>&copy; <span id="year">2026</span> 7RepWorkout.com</span>
+      <span>Talk to your doctor before starting any exercise program.</span>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/workout-data.js"></script>
+  <script src="js/signup.js"></script>
+  <script src="js/generator.js"></script>
+</body>
+</html>

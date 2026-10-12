@@ -1,0 +1,7 @@
+/backend/samconfig.toml
+/backend/.aws-sam/
+node_modules/
+.env
+.env.*
+.DS_Store
+DEPLOY.md
